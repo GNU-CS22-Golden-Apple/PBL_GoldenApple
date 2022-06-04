@@ -918,19 +918,40 @@ public class Frag1 extends Fragment implements View.OnClickListener {
             case 0:
                 // 사진 선택
                 if (resultCode == Activity.RESULT_OK) {
+
+                    Bitmap imageBitmap = null;
                     try {
                         // Image 상대경로를 가져온다
                         Bundle extras = data.getExtras();
-                        Bitmap imageBitmap = (Bitmap) extras.get("data");
-                        int dimension = Math.min(imageBitmap.getWidth(), imageBitmap.getHeight());
-                        imageBitmap = ThumbnailUtils.extractThumbnail(imageBitmap, dimension, dimension);
-                        img.setImageBitmap(imageBitmap);
+                        imageBitmap = (Bitmap) extras.get("data");
 
-                        imageBitmap = Bitmap.createScaledBitmap(imageBitmap, imageSize, imageSize, false);
-                        classifyImage(imageBitmap);
                     } catch (Exception e) {
                         // 대기메시지 종료
                     }
+
+                    int dimension = Math.min(imageBitmap.getWidth(), imageBitmap.getHeight());
+                    imageBitmap = ThumbnailUtils.extractThumbnail(imageBitmap, dimension, dimension);
+                    img.setImageBitmap(imageBitmap);
+
+                    imageBitmap = Bitmap.createScaledBitmap(imageBitmap, imageSize, imageSize, false);
+
+                    // OpenCV 배경제거 처리
+                    rect = new Rect(0, 0, 223, 223);
+                    Utils.bitmapToMat(imageBitmap, image);
+                    Imgproc.cvtColor(image, image, Imgproc.COLOR_RGBA2RGB);
+                    System.out.println(image.type());
+
+                    Imgproc.grabCut(image, result, rect, bgModel, fgModel, 5, Imgproc.GC_INIT_WITH_RECT);
+                    Core.compare(result, new Scalar(Imgproc.GC_PR_FGD), result, Core.CMP_EQ);
+                    Mat foreground = new Mat(image.size(), CvType.CV_8UC3,
+                            new Scalar(255, 255, 255));
+                    image.copyTo(foreground, result);
+
+                    Utils.matToBitmap(foreground, imageBitmap);
+                    img.setImageBitmap(imageBitmap);
+
+                    classifyImage(imageBitmap);
+
                 } // 사진 선택 취소
                 else if (resultCode == Activity.RESULT_CANCELED) {
 
